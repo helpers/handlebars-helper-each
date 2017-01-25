@@ -1,6 +1,8 @@
 'use strict';
 
+var typeOf = require('kind-of');
 var extend = require('extend-shallow');
+var utils = require('handlebars-utils');
 
 module.exports = function(context, options, cb) {
   if (typeof options === 'function') {
@@ -9,41 +11,33 @@ module.exports = function(context, options, cb) {
     return;
   }
 
-  if (typeof cb !== 'function') {
-    cb = function(err, result) {
-      if (err) throw err;
-      return result;
-    };
-  }
+  let contextPath;
+  let result = '';
+  let data;
 
-  var fn = options.fn;
-  var inverse = options.inverse;
-  var i = 0;
-  var result = '';
-  var data;
-  var contextPath;
-
-  function execIteration(field, index, last) {
+  function execIteration(key, index, last) {
     if (data) {
-      data.key = field;
+      data.key = key;
       data.index = index;
       data.first = index === 0;
       data.last = !!last;
 
       if (contextPath) {
-        data.contextPath = contextPath + field;
+        data.contextPath = contextPath + key;
       }
     }
 
-    result = result + fn(context[field], {
+    let val = context[key];
+
+    result = result + options.fn(val, {
       data: data,
-      blockParams: blockParams([context[field], field], [contextPath + field, null])
+      blockParams: utils.blockParams([val, key], [contextPath + key, null])
     });
   }
 
   try {
     if (options.data && options.ids) {
-      contextPath = appendContextPath(options.data.contextPath, options.ids[0]) + '.';
+      contextPath = utils.appendContextPath(options.data.contextPath, options.ids[0]) + '.';
     }
 
     if (typeof context === 'function') {
@@ -51,59 +45,35 @@ module.exports = function(context, options, cb) {
     }
 
     if (options.data) {
-      data = createFrame(options.data);
+      data = utils.createFrame(options.data);
     }
 
-    if (context && typeof context === 'object') {
-      if (Array.isArray(context)) {
-        for (var j = context.length; i < j; i++) {
-          if (i in context) {
-            execIteration(i, i, i === context.length - 1);
-          }
-        }
-      } else {
-        var priorKey;
+    let arr = context;
+    let isObject = typeOf(context) === 'object';
+    if (isObject) {
+      arr = Object.keys(context);
+    }
 
-        for (var key in context) {
-          if (context.hasOwnProperty(key)) {
-            // We're running the iterations one step out of sync so we can detect
-            // the last iteration without have to scan the object twice and create
-            // an itermediate keys array.
-            if (priorKey !== undefined) {
-              execIteration(priorKey, i - 1);
-            }
-            priorKey = key;
-            i++;
-          }
-        }
-
-        if (priorKey !== undefined) {
-          execIteration(priorKey, i - 1, true);
-        }
+    let len = arr.length;
+    if (len === 0) {
+      result = options.inverse(this);
+    } else {
+      for (let i = 0; i < len; i++) {
+        execIteration(isObject ? arr[i] : i, i, i === len - 1);
       }
     }
 
-    if (i === 0) {
-      result = inverse(this);
-    }
   } catch (err) {
-    return cb(err);
+    if (typeof cb !== 'function') {
+      throw err;
+    }
+    cb(err);
+    return;
   }
 
-  return cb(null, result);
+  if (typeof cb !== 'function') {
+    return result;
+  }
+
+  cb(null, result);
 };
-
-function appendContextPath(contextPath, id) {
-  return (contextPath ? contextPath + '.' : '') + id;
-}
-
-function blockParams(params, ids) {
-  params.path = ids;
-  return params;
-}
-
-function createFrame(object) {
-  var frame = extend({}, object);
-  frame._parent = object;
-  return frame;
-}

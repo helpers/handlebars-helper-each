@@ -22,9 +22,9 @@ var app = assemble();
 app.helper('each', require('handlebars-helper-each'));
 
 // add some views
-app.page('foo.hbs', {content: 'this is foo', data: {title: 'Foo'}});
-app.page('bar.hbs', {content: 'this is bar', data: {title: 'Bar'}});
-app.page('baz.hbs', {content: 'this is baz', data: {title: 'Baz'}});
+app.page('foo.html', {content: 'this is foo', data: {title: 'Foo'}});
+app.page('bar.html', {content: 'this is bar', data: {title: 'Bar'}});
+app.page('baz.html', {content: 'this is baz', data: {title: 'Baz'}});
 ```
 
 Then add another template with something like the following:
@@ -35,7 +35,7 @@ Then add another template with something like the following:
   {{#each items as |view|}}
   <!-- "item" is view (vinyl file), so you can 
   get any file properties you need -->
-  <li><a href="{{item.relative}}">{{item.data.title}}</a></li>
+  <li><a href="{{item.path}}">{{item.data.title}}</a></li>
   {{/each}}
 {{/pages}}
 </ul>
@@ -43,10 +43,12 @@ Then add another template with something like the following:
 
 Renders to:
 
-```
-- Foo
-- Bar
-- Baz
+```html
+<ul>
+  <li><a href="foo.html">Foo</a></li>
+  <li><a href="bar.html">Bar</a></li>
+  <li><a href="baz.html">Baz</a></li>
+</ul>
 ```
 
 ## About
